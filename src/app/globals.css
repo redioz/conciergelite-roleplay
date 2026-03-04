@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+body {
+  background-color: #0D0D1A;
+  color: #E8E8F0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Score circle animation */
+.score-arc {
+  transition: stroke-dashoffset 1.5s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #161628;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A45;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3A55;
+}
+
+/* Timer tabular nums */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
