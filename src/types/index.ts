@@ -38,6 +38,6 @@ export type AppScreen = 'welcome' | 'briefing' | 'call' | 'results';
 
 export interface Settings {
   vapiPublicKey: string;
-  model: 'gpt-4o' | 'gpt-4o-mini';
+  model: 'gpt-4o' | 'gpt-4o-mini' | 'claude-sonnet-4-20250514' | 'claude-opus-4-20250514';
   duration: number;
 }

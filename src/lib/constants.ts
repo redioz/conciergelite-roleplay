@@ -1,17 +1,21 @@
 export const SCORE_COLORS = {
-  ecoute: '#4CAF50',
+  decouverte: '#4CAF50',
   objections: '#4A90D9',
   produit: '#F6A623',
+  valeur: '#00BCD4',
   confiance: '#E53E3E',
+  rythme: '#FF9800',
   closing: '#9B59B6',
 } as const;
 
 export const SCORE_LABELS = [
-  { key: 'ecoute', label: 'Écoute Active', color: SCORE_COLORS.ecoute },
-  { key: 'objections', label: 'Gestion des Objections', color: SCORE_COLORS.objections },
-  { key: 'produit', label: 'Connaissance Produit', color: SCORE_COLORS.produit },
-  { key: 'confiance', label: 'Création de Confiance', color: SCORE_COLORS.confiance },
-  { key: 'closing', label: 'Technique de Closing', color: SCORE_COLORS.closing },
+  { key: 'decouverte', label: 'Découverte & Écoute', color: SCORE_COLORS.decouverte, max: 15 },
+  { key: 'objections', label: 'Gestion des Objections', color: SCORE_COLORS.objections, max: 15 },
+  { key: 'produit', label: 'Connaissance Produit', color: SCORE_COLORS.produit, max: 15 },
+  { key: 'valeur', label: 'Proposition de Valeur', color: SCORE_COLORS.valeur, max: 15 },
+  { key: 'confiance', label: 'Création de Confiance', color: SCORE_COLORS.confiance, max: 15 },
+  { key: 'rythme', label: 'Gestion du Rythme', color: SCORE_COLORS.rythme, max: 10 },
+  { key: 'closing', label: 'Closing & Résilience', color: SCORE_COLORS.closing, max: 15 },
 ] as const;
 
 export const VERDICTS = [
@@ -23,7 +27,7 @@ export const VERDICTS = [
 
 export const DEFAULT_SETTINGS = {
   vapiPublicKey: 'c120595b-6506-417e-91d5-674632fbc5a8',
-  model: 'gpt-4o' as const,
+  model: 'claude-sonnet-4-20250514' as const,
   duration: 900, // 15 minutes
 };
 
@@ -34,6 +38,8 @@ export const DURATION_OPTIONS = [
 ];
 
 export const MODEL_OPTIONS = [
-  { label: 'GPT-4o (recommandé)', value: 'gpt-4o' },
+  { label: 'Claude Sonnet 4 (recommandé)', value: 'claude-sonnet-4-20250514' },
+  { label: 'Claude Opus 4 (premium)', value: 'claude-opus-4-20250514' },
+  { label: 'GPT-4o', value: 'gpt-4o' },
   { label: 'GPT-4o Mini (économique)', value: 'gpt-4o-mini' },
 ];

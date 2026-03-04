@@ -7,7 +7,7 @@ const STORAGE_KEY_SETTINGS = 'admin_global_settings';
 
 export interface AdminGlobalSettings {
   vapiPublicKey: string;
-  model: 'gpt-4o' | 'gpt-4o-mini';
+  model: 'gpt-4o' | 'gpt-4o-mini' | 'claude-sonnet-4-20250514' | 'claude-opus-4-20250514';
   duration: number;
   // Deepgram
   deepgramModel: string;

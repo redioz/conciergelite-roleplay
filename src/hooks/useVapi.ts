@@ -209,6 +209,24 @@ export function useVapi(): UseVapiReturn {
       const rawAdmin: AdminGlobalSettings = getAdminSettings();
       const admin = sanitizeAdminSettings(rawAdmin);
 
+      // Build model config based on provider
+      const isAnthropic = settings.model.startsWith('claude');
+      const modelConfig = isAnthropic
+        ? {
+            provider: 'anthropic' as const,
+            model: settings.model,
+            messages: [{ role: 'system' as const, content: profile.systemPrompt }],
+            temperature: admin.temperature,
+            maxTokens: admin.maxTokens,
+          }
+        : {
+            provider: 'openai' as const,
+            model: settings.model,
+            messages: [{ role: 'system' as const, content: profile.systemPrompt }],
+            temperature: admin.temperature,
+            maxTokens: admin.maxTokens,
+          };
+
       // Build assistant config
       const assistantConfig = {
         name: profile.name,
@@ -220,13 +238,7 @@ export function useVapi(): UseVapiReturn {
           smartFormat: true,
           keywords: admin.keywords,
         },
-        model: {
-          provider: 'openai' as const,
-          model: settings.model,
-          messages: [{ role: 'system' as const, content: profile.systemPrompt }],
-          temperature: admin.temperature,
-          maxTokens: admin.maxTokens,
-        },
+        model: modelConfig,
         voice: {
           provider: '11labs' as const,
           model: 'eleven_multilingual_v2',
