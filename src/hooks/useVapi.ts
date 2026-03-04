@@ -140,20 +140,41 @@ export function useVapi(): UseVapiReturn {
         transcriber: {
           provider: 'deepgram',
           model: 'nova-2',
-          language: 'fr',
+          language: 'multi',       // multi-language pour capter français + darija + arabe
+          smartFormat: true,        // ponctuation et formatage automatique
+          keywords: [               // mots-clés métier pour améliorer la reconnaissance
+            'ConciergÉlite:3',
+            'conciergerie:3',
+            'Airbnb:3',
+            'courte durée:3',
+            'longue durée:2',
+            'Marrakech:2',
+            'Guéliz:2',
+            'Tanger:2',
+            'Casablanca:2',
+            'fiches de police:3',
+            'check-in:2',
+            'check-out:2',
+            'taux d\'occupation:3',
+            'MAD:2',
+            'dirhams:2',
+            'taxe de séjour:3',
+            'rendement:2',
+            'commission:2',
+          ],
         },
         model: {
           provider: 'openai',
           model: settings.model,
           messages: [{ role: 'system', content: profile.systemPrompt }],
           temperature: 0.8,
-          maxTokens: 500,
+          maxTokens: 800,          // augmenté pour réponses + riches et scoring complet
         },
         voice: {
           provider: '11labs',
           model: 'eleven_multilingual_v2',
           voiceId: profile.voiceId,
-          stability: 0.6,
+          stability: 0.5,          // légèrement baissé pour plus de naturel/émotion
           similarityBoost: 0.8,
         },
         maxDurationSeconds: settings.duration + 120,
