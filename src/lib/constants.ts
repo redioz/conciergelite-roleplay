@@ -22,7 +22,7 @@ export const VERDICTS = [
 ] as const;
 
 export const DEFAULT_SETTINGS = {
-  vapiPublicKey: '',
+  vapiPublicKey: 'c120595b-6506-417e-91d5-674632fbc5a8',
   model: 'gpt-4o' as const,
   duration: 900, // 15 minutes
 };

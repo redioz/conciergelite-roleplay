@@ -38,7 +38,7 @@ export default function Home() {
       const model = localStorage.getItem('vapi_model');
       const duration = localStorage.getItem('call_duration');
       setSettings({
-        vapiPublicKey: key || '',
+        vapiPublicKey: key || DEFAULT_SETTINGS.vapiPublicKey,
         model: (model as Settings['model']) || 'gpt-4o',
         duration: duration ? parseInt(duration) : 900,
       });
