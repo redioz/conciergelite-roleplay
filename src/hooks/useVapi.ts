@@ -3,6 +3,71 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Profile, TranscriptEntry, ScoringResult, Settings } from '@/types';
 import { parseScoring } from '@/lib/scoring';
+import { getAdminSettings, AdminGlobalSettings, DEFAULT_ADMIN_SETTINGS } from '@/lib/adminStore';
+
+// Safe error message extraction — handles circular refs, nested objects, etc.
+function extractErrorMessage(err: any): string {
+  // Try nested paths common in Vapi error objects
+  const candidates = [
+    err?.error?.message,
+    err?.error?.statusMessage,
+    err?.error?.error,
+    err?.message,
+    err?.errorMessage,
+    err?.statusMessage,
+    err?.msg,
+    err?.reason,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.length > 0) return c;
+  }
+  // If it's a string itself
+  if (typeof err === 'string' && err.length > 0) return err;
+  // Try JSON.stringify with circular ref safety
+  try {
+    const str = JSON.stringify(err, (key, value) => {
+      if (key === '' || typeof value !== 'object' || value === null) return value;
+      // Skip potential circular refs or DOM nodes
+      if (typeof value === 'function') return '[Function]';
+      return value;
+    }, 2);
+    if (str && str !== '{}' && str !== 'null') return str;
+  } catch {}
+  // Last resort
+  return String(err) || 'Erreur inconnue';
+}
+
+// Validate and sanitize admin settings to prevent 400 errors
+function sanitizeAdminSettings(admin: AdminGlobalSettings): AdminGlobalSettings {
+  const defaults = DEFAULT_ADMIN_SETTINGS;
+  const clamp = (val: any, min: number, max: number, fallback: number): number => {
+    const n = typeof val === 'string' ? parseFloat(val) : Number(val);
+    if (isNaN(n) || !isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  };
+  const validStr = (val: any, fallback: string): string => {
+    if (typeof val === 'string' && val.trim().length > 0) return val.trim();
+    return fallback;
+  };
+
+  // Validate keywords — must be array of non-empty strings
+  let keywords = defaults.keywords;
+  if (Array.isArray(admin.keywords)) {
+    keywords = admin.keywords.filter((k: any) => typeof k === 'string' && k.trim().length > 0);
+    if (keywords.length === 0) keywords = defaults.keywords;
+  }
+
+  return {
+    ...admin,
+    deepgramModel: validStr(admin.deepgramModel, defaults.deepgramModel),
+    deepgramLanguage: validStr(admin.deepgramLanguage, defaults.deepgramLanguage),
+    keywords,
+    voiceStability: clamp(admin.voiceStability, 0, 1, defaults.voiceStability),
+    voiceSimilarityBoost: clamp(admin.voiceSimilarityBoost, 0, 1, defaults.voiceSimilarityBoost),
+    temperature: clamp(admin.temperature, 0, 2, defaults.temperature),
+    maxTokens: clamp(admin.maxTokens, 50, 4096, defaults.maxTokens),
+  };
+}
 
 interface UseVapiReturn {
   startCall: (profile: Profile, settings: Settings) => Promise<void>;
@@ -128,63 +193,78 @@ export function useVapi(): UseVapiReturn {
 
       vapi.on('error', (err: any) => {
         console.error('Vapi error:', err);
-        setError(err?.message || 'Erreur de connexion Vapi');
+        const msg = extractErrorMessage(err);
+        // Detect 400 errors (invalid config)
+        const statusCode = err?.error?.statusCode || err?.statusCode || err?.code;
+        if (statusCode === 400 || msg.includes('400')) {
+          setError('Configuration invalide envoyée à Vapi (erreur 400). Va dans Admin → réinitialise les paramètres par défaut.');
+        } else {
+          setError(`Erreur Vapi: ${msg}`);
+        }
         setConnecting(false);
         setCallActive(false);
       });
 
-      // Start the call with transient assistant config
-      await vapi.start({
+      // Load admin settings and sanitize them to prevent 400 errors
+      const rawAdmin: AdminGlobalSettings = getAdminSettings();
+      const admin = sanitizeAdminSettings(rawAdmin);
+
+      // Build assistant config
+      const assistantConfig = {
         name: profile.name,
         firstMessage: profile.firstMessage,
         transcriber: {
-          provider: 'deepgram',
-          model: 'nova-2',
-          language: 'multi',       // multi-language pour capter français + darija + arabe
-          smartFormat: true,        // ponctuation et formatage automatique
-          keywords: [               // mots-clés métier pour améliorer la reconnaissance
-            'ConciergÉlite:3',
-            'conciergerie:3',
-            'Airbnb:3',
-            'courte durée:3',
-            'longue durée:2',
-            'Marrakech:2',
-            'Guéliz:2',
-            'Tanger:2',
-            'Casablanca:2',
-            'fiches de police:3',
-            'check-in:2',
-            'check-out:2',
-            'taux d\'occupation:3',
-            'MAD:2',
-            'dirhams:2',
-            'taxe de séjour:3',
-            'rendement:2',
-            'commission:2',
-          ],
+          provider: 'deepgram' as const,
+          model: admin.deepgramModel,
+          language: admin.deepgramLanguage,
+          smartFormat: true,
+          keywords: admin.keywords,
         },
         model: {
-          provider: 'openai',
+          provider: 'openai' as const,
           model: settings.model,
-          messages: [{ role: 'system', content: profile.systemPrompt }],
-          temperature: 0.8,
-          maxTokens: 800,          // augmenté pour réponses + riches et scoring complet
+          messages: [{ role: 'system' as const, content: profile.systemPrompt }],
+          temperature: admin.temperature,
+          maxTokens: admin.maxTokens,
         },
         voice: {
-          provider: '11labs',
+          provider: '11labs' as const,
           model: 'eleven_multilingual_v2',
           voiceId: profile.voiceId,
-          stability: 0.5,          // légèrement baissé pour plus de naturel/émotion
-          similarityBoost: 0.8,
+          stability: admin.voiceStability,
+          similarityBoost: admin.voiceSimilarityBoost,
         },
         maxDurationSeconds: settings.duration + 120,
         silenceTimeoutSeconds: 30,
         endCallMessage: 'Au revoir et bonne continuation.',
         clientMessages: ['transcript', 'tool-calls', 'hang', 'speech-update'],
-      } as any);
+      };
+
+      // Log config for debugging (remove sensitive data)
+      console.log('Vapi config:', JSON.stringify({
+        ...assistantConfig,
+        model: { ...assistantConfig.model, messages: '[REDACTED]' },
+      }, null, 2));
+
+      // Start the call
+      await vapi.start(assistantConfig as any);
     } catch (err: any) {
       console.error('Start call error:', err);
-      setError(err?.message || 'Impossible de démarrer l\'appel');
+      const rawMsg = extractErrorMessage(err);
+      let msg = rawMsg || 'Impossible de démarrer l\'appel';
+      // Detect common issues
+      if (msg.includes('Permission') || msg.includes('NotAllowed') || msg.includes('getUserMedia')) {
+        msg = 'Autorise l\'accès au microphone dans ton navigateur puis réessaie.';
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        msg = 'Aucun microphone détecté. Branche un micro et réessaie.';
+      } else if (msg.includes('401') || msg.includes('Unauthorized')) {
+        msg = 'Clé Vapi invalide ou expirée. Vérifie dans ⚙️ Paramètres.';
+      } else if (msg.includes('403') || msg.includes('Forbidden')) {
+        msg = 'Accès refusé par Vapi. Vérifie tes crédits sur dashboard.vapi.ai.';
+      } else if (msg.includes('400') || msg.includes('Bad Request')) {
+        msg = 'Configuration rejetée par Vapi (400). Essaie de réinitialiser les paramètres admin.';
+      }
+      setError(msg);
       setConnecting(false);
     }
   }, []);
