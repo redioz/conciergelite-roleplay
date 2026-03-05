@@ -333,8 +333,27 @@ Ne JAMAIS épeler les chiffres un par un. Toujours les prononcer comme un nombre
           similarityBoost: admin.voiceSimilarityBoost,
           language: 'fr',
         },
+        // --- Noise resilience & natural conversation behavior ---
+        // Filter background noise so the AI doesn't stop on ambient sounds
+        backgroundSpeechDenoisingPlan: {
+          smartDenoisingPlan: {
+            enabled: true,
+          },
+        },
+        // Require 3 real words before the AI stops talking (prevents noise interruptions)
+        // voiceSeconds: 0.6s of actual voice needed, backoff: 1.5s before resuming
+        stopSpeakingPlan: {
+          numWords: 3,
+          voiceSeconds: 0.6,
+          backoffSeconds: 1.5,
+        },
+        // Natural response timing — wait 0.4s after user finishes before responding
+        startSpeakingPlan: {
+          waitSeconds: 0.4,
+          backoffSeconds: 1.0,
+        },
         maxDurationSeconds: settings.duration + 120,
-        silenceTimeoutSeconds: 30,
+        silenceTimeoutSeconds: 45,
         endCallMessage: 'Au revoir et bonne continuation.',
         clientMessages: ['transcript', 'tool-calls', 'hang', 'speech-update'],
       };

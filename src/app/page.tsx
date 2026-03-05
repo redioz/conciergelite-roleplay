@@ -35,7 +35,7 @@ export default function Home() {
 
   // Version-based cache migration — forces clean state on new deployments
   useEffect(() => {
-    const APP_VERSION = '3.0.0-transcript-fix';
+    const APP_VERSION = '4.0.0-noise-resilience';
     try {
       const storedVersion = localStorage.getItem('app_version');
       if (storedVersion !== APP_VERSION) {
