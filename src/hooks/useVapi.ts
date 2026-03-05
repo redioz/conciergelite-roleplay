@@ -50,11 +50,30 @@ function sanitizeAdminSettings(admin: AdminGlobalSettings): AdminGlobalSettings 
     return fallback;
   };
 
-  // Validate keywords — must be array of non-empty strings
+  // Validate keywords — Vapi requires format 'word' or 'word:number' (NO spaces)
   let keywords = defaults.keywords;
   if (Array.isArray(admin.keywords)) {
-    keywords = admin.keywords.filter((k: any) => typeof k === 'string' && k.trim().length > 0);
-    if (keywords.length === 0) keywords = defaults.keywords;
+    const raw = admin.keywords.filter((k: any) => typeof k === 'string' && k.trim().length > 0);
+    // Split multi-word keywords into individual words, preserving boost
+    const expanded: string[] = [];
+    for (const kw of raw) {
+      const trimmed = kw.trim();
+      // Extract boost if present (e.g. "courte durée:3" → words=["courte","durée"], boost=":3")
+      const colonIdx = trimmed.lastIndexOf(':');
+      let words: string;
+      let boost = '';
+      if (colonIdx > 0 && /^\d+(\.\d+)?$/.test(trimmed.slice(colonIdx + 1))) {
+        words = trimmed.slice(0, colonIdx);
+        boost = trimmed.slice(colonIdx); // e.g. ":3"
+      } else {
+        words = trimmed;
+      }
+      // Split on spaces and add each word with the same boost
+      for (const w of words.split(/\s+/)) {
+        if (w.length > 0) expanded.push(w + boost);
+      }
+    }
+    keywords = expanded.length > 0 ? expanded : defaults.keywords;
   }
 
   return {
