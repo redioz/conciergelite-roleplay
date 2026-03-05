@@ -31,7 +31,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminGlobalSettings = {
     'ConciergÉlite:3', 'conciergerie:3', 'Airbnb:3',
     'courte:2', 'durée:2', 'longue:2',
     'Marrakech:2', 'Guéliz:2', 'Tanger:2', 'Casablanca:2',
-    'check-in:2', 'check-out:2',
+    'checkin:2', 'checkout:2',
     'occupation:2', 'MAD:2', 'dirhams:2',
     'séjour:2', 'taxe:2', 'rendement:2', 'commission:2',
   ],

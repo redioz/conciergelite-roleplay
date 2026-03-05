@@ -50,26 +50,26 @@ function sanitizeAdminSettings(admin: AdminGlobalSettings): AdminGlobalSettings 
     return fallback;
   };
 
-  // Validate keywords — Vapi requires format 'word' or 'word:number' (NO spaces)
+  // Validate keywords — Vapi requires format 'word' or 'word:number' (NO spaces, NO hyphens)
   let keywords = defaults.keywords;
   if (Array.isArray(admin.keywords)) {
     const raw = admin.keywords.filter((k: any) => typeof k === 'string' && k.trim().length > 0);
-    // Split multi-word keywords into individual words, preserving boost
     const expanded: string[] = [];
     for (const kw of raw) {
       const trimmed = kw.trim();
-      // Extract boost if present (e.g. "courte durée:3" → words=["courte","durée"], boost=":3")
+      // Extract boost if present (e.g. "courte durée:3" → boost=":3")
       const colonIdx = trimmed.lastIndexOf(':');
-      let words: string;
+      let wordPart: string;
       let boost = '';
       if (colonIdx > 0 && /^\d+(\.\d+)?$/.test(trimmed.slice(colonIdx + 1))) {
-        words = trimmed.slice(0, colonIdx);
-        boost = trimmed.slice(colonIdx); // e.g. ":3"
+        wordPart = trimmed.slice(0, colonIdx);
+        boost = trimmed.slice(colonIdx);
       } else {
-        words = trimmed;
+        wordPart = trimmed;
       }
-      // Split on spaces and add each word with the same boost
-      for (const w of words.split(/\s+/)) {
+      // Remove hyphens (check-in → checkin) and split spaces into separate keywords
+      const cleaned = wordPart.replace(/-/g, '');
+      for (const w of cleaned.split(/\s+/)) {
         if (w.length > 0) expanded.push(w + boost);
       }
     }
