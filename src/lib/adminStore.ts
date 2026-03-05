@@ -23,8 +23,8 @@ export interface AdminGlobalSettings {
 
 export const DEFAULT_ADMIN_SETTINGS: AdminGlobalSettings = {
   vapiPublicKey: DEFAULT_SETTINGS.vapiPublicKey,
-  model: 'gpt-4o',
-  duration: 900,
+  model: DEFAULT_SETTINGS.model as AdminGlobalSettings['model'],
+  duration: DEFAULT_SETTINGS.duration,
   deepgramModel: 'nova-2',
   deepgramLanguage: 'multi',
   keywords: [

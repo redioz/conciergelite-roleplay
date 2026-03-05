@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppScreen, Profile, Settings, ScoringResult } from '@/types';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
+import { getAdminSettings, getMergedProfiles } from '@/lib/adminStore';
 import { useVapi } from '@/hooks/useVapi';
 import WelcomeScreen from '@/components/WelcomeScreen';
 import BriefingScreen from '@/components/BriefingScreen';
@@ -13,6 +14,7 @@ import SettingsModal from '@/components/SettingsModal';
 export default function Home() {
   const [screen, setScreen] = useState<AppScreen>('welcome');
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -31,18 +33,34 @@ export default function Home() {
     error,
   } = useVapi();
 
-  // Load settings from localStorage
+  // Version-based cache migration — forces clean state on new deployments
   useEffect(() => {
+    const APP_VERSION = '2.0.0-claude';
     try {
-      const key = localStorage.getItem('vapi_public_key');
-      const model = localStorage.getItem('vapi_model');
-      const duration = localStorage.getItem('call_duration');
-      setSettings({
-        vapiPublicKey: key || DEFAULT_SETTINGS.vapiPublicKey,
-        model: (model as Settings['model']) || 'gpt-4o',
-        duration: duration ? parseInt(duration) : 900,
-      });
+      const storedVersion = localStorage.getItem('app_version');
+      if (storedVersion !== APP_VERSION) {
+        // New version — clear all old settings to prevent config corruption
+        console.log(`[ConciergElite] Upgrade ${storedVersion || 'none'} → ${APP_VERSION}: resetting settings`);
+        localStorage.removeItem('admin_global_settings');
+        localStorage.removeItem('vapi_public_key');
+        localStorage.removeItem('vapi_model');
+        localStorage.removeItem('call_duration');
+        localStorage.setItem('app_version', APP_VERSION);
+      }
     } catch {}
+
+    // Load settings from admin store (single source of truth)
+    try {
+      const admin = getAdminSettings();
+      setSettings({
+        vapiPublicKey: admin.vapiPublicKey || DEFAULT_SETTINGS.vapiPublicKey,
+        model: admin.model || DEFAULT_SETTINGS.model,
+        duration: admin.duration || DEFAULT_SETTINGS.duration,
+      });
+      console.log('[ConciergElite] Settings loaded:', { model: admin.model, key: admin.vapiPublicKey?.substring(0, 8) + '...' });
+    } catch {}
+    // Load merged profiles (defaults + admin overrides)
+    setProfiles(getMergedProfiles());
   }, []);
 
   // Save settings
@@ -100,11 +118,13 @@ export default function Home() {
           setFinalScoring({
             total: 0,
             details: [
-              { label: 'Écoute Active', value: 0, max: 20, color: '#4CAF50' },
-              { label: 'Gestion des Objections', value: 0, max: 20, color: '#4A90D9' },
-              { label: 'Connaissance Produit', value: 0, max: 20, color: '#F6A623' },
-              { label: 'Création de Confiance', value: 0, max: 20, color: '#E53E3E' },
-              { label: 'Technique de Closing', value: 0, max: 20, color: '#9B59B6' },
+              { label: 'Découverte & Écoute', value: 0, max: 15, color: '#4CAF50' },
+              { label: 'Gestion des Objections', value: 0, max: 15, color: '#4A90D9' },
+              { label: 'Connaissance Produit', value: 0, max: 15, color: '#F6A623' },
+              { label: 'Proposition de Valeur', value: 0, max: 15, color: '#00BCD4' },
+              { label: 'Création de Confiance', value: 0, max: 15, color: '#E53E3E' },
+              { label: 'Gestion du Rythme', value: 0, max: 10, color: '#FF9800' },
+              { label: 'Closing & Résilience', value: 0, max: 15, color: '#9B59B6' },
             ],
             pointsForts: "L'appel s'est terminé avant que l'évaluation ne soit donnée.",
             axesAmelioration: "Essaie de maintenir l'appel plus longtemps pour obtenir une évaluation complète.",
@@ -161,7 +181,7 @@ export default function Home() {
       {/* Error alert */}
       {error && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full mx-4 animate-slide-up">
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-5 py-3 flex items-start gap-3">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl px-5 py-3 backdrop-blur-md flex items-start gap-3">
             <span className="text-red-400 mt-0.5">⚠️</span>
             <div className="flex-1">
               <p className="text-sm text-red-300">{error}</p>
@@ -183,6 +203,7 @@ export default function Home() {
       {screen === 'welcome' && (
         <WelcomeScreen
           hasApiKey={hasApiKey}
+          profiles={profiles}
           onSelectProfile={handleSelectProfile}
           onOpenSettings={() => setShowSettings(true)}
         />

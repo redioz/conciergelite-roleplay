@@ -191,15 +191,25 @@ export function useVapi(): UseVapiReturn {
         }
       });
 
+      // Listen to progress events for debugging
+      vapi.on('call-start-progress', (progress: any) => {
+        console.log('Vapi progress:', JSON.stringify(progress));
+        if (progress?.status === 'failed') {
+          console.error('Vapi stage failed:', progress);
+        }
+      });
+
       vapi.on('error', (err: any) => {
-        console.error('Vapi error:', err);
+        console.error('Vapi error (full):', JSON.stringify(err, null, 2));
         const msg = extractErrorMessage(err);
         // Detect 400 errors (invalid config)
         const statusCode = err?.error?.statusCode || err?.statusCode || err?.code;
-        if (statusCode === 400 || msg.includes('400')) {
-          setError('Configuration invalide envoyée à Vapi (erreur 400). Va dans Admin → réinitialise les paramètres par défaut.');
+        if (statusCode === 400 || msg.includes('400') || msg.includes('Bad Request')) {
+          setError(`Erreur 400 Vapi: ${msg.substring(0, 200)}`);
+        } else if (msg.includes('pipeline') || msg.includes('provider')) {
+          setError(`Erreur provider: ${msg.substring(0, 200)}`);
         } else {
-          setError(`Erreur Vapi: ${msg}`);
+          setError(`Erreur Vapi: ${msg.substring(0, 200)}`);
         }
         setConnecting(false);
         setCallActive(false);
