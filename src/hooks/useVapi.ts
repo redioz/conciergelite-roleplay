@@ -110,6 +110,9 @@ export function useVapi(): UseVapiReturn {
   const [scoring, setScoring] = useState<ScoringResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fullTranscriptRef = useRef('');
+  const callProfileRef = useRef<{ id: string; name: string } | null>(null);
+  const callModelRef = useRef<string>('');
+  const callStartTimeRef = useRef<string>('');
 
   // Clean up on unmount
   useEffect(() => {
@@ -150,6 +153,30 @@ export function useVapi(): UseVapiReturn {
         if (result) {
           setScoring(result);
         }
+
+        // Log transcript to backend
+        const durationMs = Date.now() - new Date(callStartTimeRef.current).getTime();
+        setTranscript((currentTranscript) => {
+          // Use callback to get latest transcript state
+          fetch('/api/transcript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              profile_id: callProfileRef.current?.id || 'unknown',
+              profile_name: callProfileRef.current?.name || 'unknown',
+              transcript: currentTranscript,
+              full_transcript: fullTranscriptRef.current,
+              scoring: result || null,
+              duration_seconds: Math.round(durationMs / 1000),
+              model: callModelRef.current,
+              started_at: callStartTimeRef.current,
+            }),
+          })
+            .then((r) => r.json())
+            .then((data) => console.log('[ConciergElite] Transcript saved:', data))
+            .catch((err) => console.error('[ConciergElite] Failed to save transcript:', err));
+          return currentTranscript; // Don't modify state
+        });
       });
 
       vapi.on('speech-start', () => {
@@ -237,24 +264,51 @@ export function useVapi(): UseVapiReturn {
         setCallActive(false);
       });
 
+      // Store call metadata for post-call logging
+      callProfileRef.current = { id: profile.id, name: profile.name };
+      callModelRef.current = settings.model;
+      callStartTimeRef.current = new Date().toISOString();
+      fullTranscriptRef.current = '';
+
       // Load admin settings and sanitize them to prevent 400 errors
       const rawAdmin: AdminGlobalSettings = getAdminSettings();
       const admin = sanitizeAdminSettings(rawAdmin);
 
+      // French language enforcement prefix — injected before every system prompt
+      const frenchPrefix = `[LANGUE OBLIGATOIRE]
+Tu DOIS parler UNIQUEMENT en français. Jamais un seul mot en anglais.
+- Dis "pour cent" et JAMAIS "percent"
+- Dis "cinq cents dirhams" et JAMAIS "5 0 0 dirhams" — prononce TOUJOURS les nombres en toutes lettres de manière naturelle
+- Dis "mille" pas "one thousand", "deux mille" pas "two thousand"
+- Utilise les expressions françaises/marocaines naturelles
+- Si tu dois mentionner un terme technique anglais (Airbnb, check-in), prononce-le naturellement mais tout le reste DOIT être en français
+
+[PRONONCIATION DES NOMBRES]
+- 500 → "cinq cents"
+- 5 500 → "cinq mille cinq cents"
+- 10 000 → "dix mille"
+- 15 000 → "quinze mille"
+- 18% → "dix-huit pour cent"
+- 3% → "trois pour cent"
+Ne JAMAIS épeler les chiffres un par un. Toujours les prononcer comme un nombre naturel.
+
+`;
+
       // Build model config based on provider
+      const systemPrompt = frenchPrefix + profile.systemPrompt;
       const isAnthropic = settings.model.startsWith('claude');
       const modelConfig = isAnthropic
         ? {
             provider: 'anthropic' as const,
             model: settings.model,
-            messages: [{ role: 'system' as const, content: profile.systemPrompt }],
+            messages: [{ role: 'system' as const, content: systemPrompt }],
             temperature: admin.temperature,
             maxTokens: admin.maxTokens,
           }
         : {
             provider: 'openai' as const,
             model: settings.model,
-            messages: [{ role: 'system' as const, content: profile.systemPrompt }],
+            messages: [{ role: 'system' as const, content: systemPrompt }],
             temperature: admin.temperature,
             maxTokens: admin.maxTokens,
           };
@@ -277,6 +331,7 @@ export function useVapi(): UseVapiReturn {
           voiceId: profile.voiceId,
           stability: admin.voiceStability,
           similarityBoost: admin.voiceSimilarityBoost,
+          language: 'fr',
         },
         maxDurationSeconds: settings.duration + 120,
         silenceTimeoutSeconds: 30,
