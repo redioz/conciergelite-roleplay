@@ -341,10 +341,9 @@ Ne JAMAIS épeler les chiffres un par un. Toujours les prononcer comme un nombre
           },
         },
         // Require 3 real words before the AI stops talking (prevents noise interruptions)
-        // voiceSeconds: 0.6s of actual voice needed, backoff: 1.5s before resuming
         stopSpeakingPlan: {
           numWords: 3,
-          voiceSeconds: 0.6,
+          voiceSeconds: 0.5,
           backoffSeconds: 1.5,
         },
         // Natural response timing — wait 0.4s after user finishes before responding
