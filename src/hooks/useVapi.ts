@@ -350,7 +350,6 @@ Ne JAMAIS épeler les chiffres un par un. Toujours les prononcer comme un nombre
         // Natural response timing — wait 0.4s after user finishes before responding
         startSpeakingPlan: {
           waitSeconds: 0.4,
-          backoffSeconds: 1.0,
         },
         maxDurationSeconds: settings.duration + 120,
         silenceTimeoutSeconds: 45,
