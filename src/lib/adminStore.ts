@@ -25,8 +25,8 @@ export const DEFAULT_ADMIN_SETTINGS: AdminGlobalSettings = {
   vapiPublicKey: DEFAULT_SETTINGS.vapiPublicKey,
   model: DEFAULT_SETTINGS.model as AdminGlobalSettings['model'],
   duration: DEFAULT_SETTINGS.duration,
-  deepgramModel: 'nova-2',
-  deepgramLanguage: 'multi',
+  deepgramModel: 'nova-3',
+  deepgramLanguage: 'fr',
   keywords: [
     'ConciergÉlite:3', 'conciergerie:3', 'Airbnb:3',
     'courte:2', 'durée:2', 'longue:2',

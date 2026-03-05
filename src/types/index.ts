@@ -32,6 +32,7 @@ export interface TranscriptEntry {
   role: 'assistant' | 'user';
   text: string;
   timestamp: number;
+  isFinal?: boolean;
 }
 
 export type AppScreen = 'welcome' | 'briefing' | 'call' | 'results';

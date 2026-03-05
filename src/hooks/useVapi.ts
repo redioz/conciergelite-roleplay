@@ -164,39 +164,42 @@ export function useVapi(): UseVapiReturn {
         if (message.type === 'transcript') {
           const role = message.role === 'assistant' ? 'assistant' : 'user';
           const text = message.transcript || '';
+          const isFinal = message.transcriptType === 'final';
 
-          if (message.transcriptType === 'final') {
+          if (isFinal) {
             fullTranscriptRef.current += `\n${role === 'assistant' ? 'ASSISTANT' : 'USER'}: ${text}`;
-
-            setTranscript((prev) => {
-              // Replace last partial with final, or append
-              const newTranscript = [...prev];
-              const lastIdx = newTranscript.length - 1;
-              if (lastIdx >= 0 && newTranscript[lastIdx].role === role) {
-                newTranscript[lastIdx] = { role, text, timestamp: Date.now() };
-              } else {
-                newTranscript.push({ role, text, timestamp: Date.now() });
-              }
-              return newTranscript;
-            });
-          } else {
-            // Partial transcript
-            setTranscript((prev) => {
-              const newTranscript = [...prev];
-              const lastIdx = newTranscript.length - 1;
-              if (lastIdx >= 0 && newTranscript[lastIdx].role === role) {
-                newTranscript[lastIdx] = { role, text, timestamp: Date.now() };
-              } else {
-                newTranscript.push({ role, text, timestamp: Date.now() });
-              }
-              return newTranscript;
-            });
           }
+
+          setTranscript((prev) => {
+            const newTranscript = [...prev];
+            const lastIdx = newTranscript.length - 1;
+            const lastEntry = lastIdx >= 0 ? newTranscript[lastIdx] : null;
+
+            if (isFinal) {
+              // FINAL transcript: replace last entry ONLY if it was a partial of the same role
+              if (lastEntry && lastEntry.role === role && !lastEntry.isFinal) {
+                newTranscript[lastIdx] = { role, text, timestamp: Date.now(), isFinal: true };
+              } else {
+                // New final from same or different role — always push
+                newTranscript.push({ role, text, timestamp: Date.now(), isFinal: true });
+              }
+            } else {
+              // PARTIAL transcript: update live text
+              if (lastEntry && lastEntry.role === role && !lastEntry.isFinal) {
+                // Update existing partial (live typing effect)
+                newTranscript[lastIdx] = { role, text, timestamp: Date.now(), isFinal: false };
+              } else {
+                // New utterance starting — push new partial entry
+                newTranscript.push({ role, text, timestamp: Date.now(), isFinal: false });
+              }
+            }
+
+            return newTranscript;
+          });
 
           // Track user speaking state
           if (role === 'user') {
             setUserSpeaking(true);
-            // Reset after a short delay
             setTimeout(() => setUserSpeaking(false), 500);
           }
         }
