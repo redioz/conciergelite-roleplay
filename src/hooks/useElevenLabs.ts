@@ -5,7 +5,7 @@ import { Profile, TranscriptEntry, ScoringResult, Settings } from '@/types';
 import { parseScoring } from '@/lib/scoring';
 
 interface UseElevenLabsReturn {
-  startCall: (profile: Profile, settings: Settings) => Promise<void>;
+  startCall: (profile: Profile, settings: Settings, userId?: string) => Promise<void>;
   stopCall: () => void;
   connecting: boolean;
   callActive: boolean;
@@ -37,6 +37,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
   const callProfileRef = useRef<{ id: string; name: string } | null>(null);
   const callModelRef = useRef<string>('');
   const callStartTimeRef = useRef<string>('');
+  const callUserIdRef = useRef<string | undefined>(undefined);
   const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Clean up on unmount
@@ -53,7 +54,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
     };
   }, []);
 
-  const startCall = useCallback(async (profile: Profile, settings: Settings) => {
+  const startCall = useCallback(async (profile: Profile, settings: Settings, userId?: string) => {
     setError(null);
     setScoring(null);
     setTranscript([]);
@@ -82,6 +83,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
       callProfileRef.current = { id: profile.id, name: profile.name };
       callModelRef.current = settings.model;
       callStartTimeRef.current = new Date().toISOString();
+      callUserIdRef.current = userId;
 
       // Start the ElevenLabs conversation
       // Language instructions & ASR keywords are in the agent base config (server-side)
@@ -159,6 +161,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
                 duration_seconds: Math.round(durationMs / 1000),
                 model: callModelRef.current,
                 started_at: callStartTimeRef.current,
+                user_id: callUserIdRef.current || null,
               }),
             })
               .then((r) => r.json())

@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from '@/lib/constants';
 import { getAdminSettings, getMergedProfiles } from '@/lib/adminStore';
 import { generateScenario } from '@/lib/scenarioGenerator';
 import { useElevenLabs } from '@/hooks/useElevenLabs';
+import { useAuth } from '@/components/AuthProvider';
 import WelcomeScreen from '@/components/WelcomeScreen';
 import BriefingScreen from '@/components/BriefingScreen';
 import CallScreen from '@/components/CallScreen';
@@ -13,6 +14,7 @@ import ResultsScreen from '@/components/ResultsScreen';
 import SettingsModal from '@/components/SettingsModal';
 
 export default function Home() {
+  const { user, signOut } = useAuth();
   const [screen, setScreen] = useState<AppScreen>('welcome');
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -21,6 +23,10 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [finalScoring, setFinalScoring] = useState<ScoringResult | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ── Usage tracking ──
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(3600);
+  const [usageLoading, setUsageLoading] = useState(true);
 
   // ── Simulation state ──
   const [simMode, setSimMode] = useState<SimMode>('training');
@@ -70,6 +76,26 @@ export default function Home() {
     setProfiles(getMergedProfiles());
   }, []);
 
+  // Fetch daily usage
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch('/api/usage');
+      if (res.ok) {
+        const data = await res.json();
+        setSecondsRemaining(data.seconds_remaining);
+      }
+    } catch (err) {
+      console.error('[Usage] Failed to fetch:', err);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) fetchUsage();
+    else setUsageLoading(false);
+  }, [user, fetchUsage]);
+
   // Save settings
   const handleSaveSettings = useCallback((newSettings: Settings) => {
     setSettings(newSettings);
@@ -107,8 +133,10 @@ export default function Home() {
     if (scoring && !callActive) {
       setFinalScoring(scoring);
       setScreen('results');
+      // Refresh usage after call
+      if (user) fetchUsage();
     }
-  }, [scoring, callActive]);
+  }, [scoring, callActive, user, fetchUsage]);
 
   // When call ends without scoring — wait for AI evaluation or show fallback
   useEffect(() => {
@@ -166,10 +194,23 @@ export default function Home() {
   // Start call
   const handleStartCall = useCallback(async () => {
     if (!selectedProfile) return;
+
+    // Check daily usage limit
+    if (user && secondsRemaining <= 0) {
+      alert('Tu as atteint ta limite de 60 minutes aujourd\'hui. Reviens demain !');
+      return;
+    }
+
+    // Cap call duration to remaining time
+    const cappedSettings = { ...settings };
+    if (user && secondsRemaining < settings.duration) {
+      cappedSettings.duration = secondsRemaining;
+    }
+
     setScreen('call');
     setFinalScoring(null);
-    await startCall(selectedProfile, settings);
-  }, [selectedProfile, settings, startCall]);
+    await startCall(selectedProfile, cappedSettings, user?.id);
+  }, [selectedProfile, settings, startCall, user, secondsRemaining]);
 
   // Hang up
   const handleHangUp = useCallback(() => {
@@ -238,6 +279,10 @@ export default function Home() {
           onModeChange={handleModeChange}
           onDifficultyChange={handleDifficultyChange}
           onStartSimulation={handleStartSimulation}
+          userEmail={user?.email || null}
+          secondsRemaining={secondsRemaining}
+          usageLoading={usageLoading}
+          onSignOut={signOut}
         />
       )}
 
