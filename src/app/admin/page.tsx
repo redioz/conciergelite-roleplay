@@ -16,9 +16,14 @@ import {
 } from '@/lib/adminStore';
 import Link from 'next/link';
 
+const ADMIN_CODE = 'Admin123-';
+
 type Tab = 'profiles' | 'settings';
 
 export default function AdminPage() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState(false);
   const [tab, setTab] = useState<Tab>('profiles');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -26,12 +31,20 @@ export default function AdminPage() {
   const [globalSettings, setGlobalSettings] = useState<AdminGlobalSettings>(DEFAULT_ADMIN_SETTINGS);
   const [saved, setSaved] = useState(false);
 
+  // Check if already authenticated this session
+  useEffect(() => {
+    if (sessionStorage.getItem('admin_auth') === '1') {
+      setAuthenticated(true);
+    }
+  }, []);
+
   // Load data
   useEffect(() => {
+    if (!authenticated) return;
     setProfiles(getMergedProfiles());
     const s = getAdminSettings();
     setGlobalSettings(s);
-  }, []);
+  }, [authenticated]);
 
   // Show save confirmation briefly
   const flashSaved = useCallback(() => {
@@ -100,6 +113,64 @@ export default function AdminPage() {
     setGlobalSettings({ ...DEFAULT_ADMIN_SETTINGS });
     flashSaved();
   }, [flashSaved]);
+
+  const handleCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (codeInput === ADMIN_CODE) {
+      setAuthenticated(true);
+      sessionStorage.setItem('admin_auth', '1');
+      setCodeError(false);
+    } else {
+      setCodeError(true);
+      setCodeInput('');
+    }
+  };
+
+  // ── Code gate ──
+  if (!authenticated) {
+    return (
+      <main className="min-h-screen bg-bg flex items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="glass rounded-2xl p-8 space-y-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4C842" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-text-primary">Administration</h1>
+              <p className="text-sm text-text-muted mt-1">Entre le code d&apos;acc&egrave;s</p>
+            </div>
+            <form onSubmit={handleCodeSubmit} className="space-y-4">
+              <input
+                type="password"
+                value={codeInput}
+                onChange={(e) => { setCodeInput(e.target.value); setCodeError(false); }}
+                placeholder="Code admin"
+                autoFocus
+                className={`w-full bg-bg border rounded-xl px-4 py-3 text-sm text-text-primary text-center tracking-widest placeholder-text-muted focus:outline-none transition-colors ${
+                  codeError ? 'border-red-500/50 focus:border-red-500' : 'border-border focus:border-gold/50'
+                }`}
+              />
+              {codeError && (
+                <p className="text-xs text-red-400">Code incorrect</p>
+              )}
+              <button
+                type="submit"
+                className="w-full py-3 bg-gold text-bg font-semibold rounded-xl text-sm hover:bg-gold/90 transition-all"
+              >
+                Acc&eacute;der
+              </button>
+            </form>
+            <Link href="/" className="text-xs text-text-muted hover:text-gold transition-colors">
+              &#x2190; Retour au simulateur
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-bg">
