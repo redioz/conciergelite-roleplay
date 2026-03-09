@@ -1,4 +1,4 @@
-import { Profile, Settings } from '@/types';
+import { Profile } from '@/types';
 import { PROFILES } from './profiles';
 import { DEFAULT_SETTINGS } from './constants';
 
@@ -6,13 +6,8 @@ const STORAGE_KEY_PROFILES = 'admin_custom_profiles';
 const STORAGE_KEY_SETTINGS = 'admin_global_settings';
 
 export interface AdminGlobalSettings {
-  vapiPublicKey: string;
   model: 'gpt-4o' | 'gpt-4o-mini' | 'claude-sonnet-4-20250514' | 'claude-opus-4-20250514';
   duration: number;
-  // Deepgram
-  deepgramModel: string;
-  deepgramLanguage: string;
-  keywords: string[];
   // Voice defaults
   voiceStability: number;
   voiceSimilarityBoost: number;
@@ -22,19 +17,8 @@ export interface AdminGlobalSettings {
 }
 
 export const DEFAULT_ADMIN_SETTINGS: AdminGlobalSettings = {
-  vapiPublicKey: DEFAULT_SETTINGS.vapiPublicKey,
   model: DEFAULT_SETTINGS.model as AdminGlobalSettings['model'],
   duration: DEFAULT_SETTINGS.duration,
-  deepgramModel: 'nova-3',
-  deepgramLanguage: 'fr',
-  keywords: [
-    'ConciergÉlite:3', 'conciergerie:3', 'Airbnb:3',
-    'courte:2', 'durée:2', 'longue:2',
-    'Marrakech:2', 'Guéliz:2', 'Tanger:2', 'Casablanca:2',
-    'checkin:2', 'checkout:2',
-    'occupation:2', 'MAD:2', 'dirhams:2',
-    'séjour:2', 'taxe:2', 'rendement:2', 'commission:2',
-  ],
   voiceStability: 0.5,
   voiceSimilarityBoost: 0.8,
   temperature: 0.8,
@@ -104,15 +88,8 @@ export function saveAdminSettings(settings: AdminGlobalSettings): void {
       ? settings.voiceSimilarityBoost : DEFAULT_ADMIN_SETTINGS.voiceSimilarityBoost,
     duration: typeof settings.duration === 'number' && isFinite(settings.duration)
       ? settings.duration : DEFAULT_ADMIN_SETTINGS.duration,
-    keywords: Array.isArray(settings.keywords)
-      ? settings.keywords.filter((k) => typeof k === 'string' && k.trim().length > 0)
-      : DEFAULT_ADMIN_SETTINGS.keywords,
   };
   localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(sanitized));
-  // Also sync the basic settings keys used by main app
-  localStorage.setItem('vapi_public_key', sanitized.vapiPublicKey);
-  localStorage.setItem('vapi_model', sanitized.model);
-  localStorage.setItem('call_duration', String(sanitized.duration));
 }
 
 export function resetAdminSettings(): void {

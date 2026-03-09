@@ -37,8 +37,17 @@ export interface TranscriptEntry {
 
 export type AppScreen = 'welcome' | 'briefing' | 'call' | 'results';
 
+export type Difficulty = 'facile' | 'moyen' | 'difficile' | 'aleatoire';
+export type SimMode = 'training' | 'simulation';
+
+export interface GeneratedScenario {
+  profile: Profile;
+  difficulty: Difficulty; // Resolved difficulty (never 'aleatoire')
+  contactSource: string; // e.g. "Avito longue durée"
+  sourceLabel: string;   // Display label for briefing screen
+}
+
 export interface Settings {
-  vapiPublicKey: string;
   model: 'gpt-4o' | 'gpt-4o-mini' | 'claude-sonnet-4-20250514' | 'claude-opus-4-20250514';
   duration: number;
 }

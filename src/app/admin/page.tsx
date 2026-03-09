@@ -25,14 +25,12 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
   const [globalSettings, setGlobalSettings] = useState<AdminGlobalSettings>(DEFAULT_ADMIN_SETTINGS);
   const [saved, setSaved] = useState(false);
-  const [keywordsText, setKeywordsText] = useState('');
 
   // Load data
   useEffect(() => {
     setProfiles(getMergedProfiles());
     const s = getAdminSettings();
     setGlobalSettings(s);
-    setKeywordsText(s.keywords.join('\n'));
   }, []);
 
   // Show save confirmation briefly
@@ -93,20 +91,13 @@ export default function AdminPage() {
   // ── Global Settings ──
 
   const handleSaveSettings = useCallback(() => {
-    const keywords = keywordsText
-      .split('\n')
-      .map((k) => k.trim())
-      .filter(Boolean);
-    const updated = { ...globalSettings, keywords };
-    saveAdminSettings(updated);
-    setGlobalSettings(updated);
+    saveAdminSettings(globalSettings);
     flashSaved();
-  }, [globalSettings, keywordsText, flashSaved]);
+  }, [globalSettings, flashSaved]);
 
   const handleResetSettings = useCallback(() => {
     resetAdminSettings();
     setGlobalSettings({ ...DEFAULT_ADMIN_SETTINGS });
-    setKeywordsText(DEFAULT_ADMIN_SETTINGS.keywords.join('\n'));
     flashSaved();
   }, [flashSaved]);
 
@@ -368,17 +359,11 @@ export default function AdminPage() {
         {tab === 'settings' && (
           <div className="space-y-8">
             <p className="text-text-muted text-sm">
-              Configure les paramètres globaux : clé Vapi, modèle IA, voix, transcription.
+              Configure les paramètres globaux : modèle IA, voix, durée.
             </p>
 
-            {/* Vapi / LLM */}
-            <Section title="Vapi & Modèle IA">
-              <FieldInput
-                label="Clé publique Vapi"
-                value={globalSettings.vapiPublicKey}
-                onChange={(v) => setGlobalSettings({ ...globalSettings, vapiPublicKey: v })}
-                placeholder="pk_xxx..."
-              />
+            {/* LLM Settings */}
+            <Section title="Modèle IA & Appel">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">Modèle</label>
@@ -432,49 +417,6 @@ export default function AdminPage() {
                     <option value={1200}>20 minutes</option>
                   </select>
                 </div>
-              </div>
-            </Section>
-
-            {/* Deepgram */}
-            <Section title="Transcription (Deepgram)">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FieldInput
-                  label="Modèle Deepgram"
-                  value={globalSettings.deepgramModel}
-                  onChange={(v) => setGlobalSettings({ ...globalSettings, deepgramModel: v })}
-                  placeholder="nova-2"
-                />
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Langue</label>
-                  <select
-                    value={globalSettings.deepgramLanguage}
-                    onChange={(e) =>
-                      setGlobalSettings({ ...globalSettings, deepgramLanguage: e.target.value })
-                    }
-                    className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
-                  >
-                    <option value="multi">Multi-langue (recommandé)</option>
-                    <option value="fr">Français uniquement</option>
-                    <option value="ar">Arabe</option>
-                    <option value="en">Anglais</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Mots-clés métier (un par ligne, format: mot:poids)
-                </label>
-                <p className="text-xs text-text-muted mb-2">
-                  Le poids (1-5) augmente la probabilité de reconnaissance. Ex: ConciergÉlite:3
-                </p>
-                <textarea
-                  value={keywordsText}
-                  onChange={(e) => setKeywordsText(e.target.value)}
-                  rows={8}
-                  className="w-full bg-bg border border-border rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-gold/50 resize-y font-mono"
-                  spellCheck={false}
-                />
               </div>
             </Section>
 

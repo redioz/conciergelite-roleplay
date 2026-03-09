@@ -4,12 +4,14 @@ import { SCORE_LABELS } from './constants';
 export function parseScoring(fullTranscript: string): ScoringResult | null {
   const text = fullTranscript;
 
-  // Parse individual scores
-  const ecouteMatch = text.match(/SCORE\s*[ÉE]COUTE\s*(?:ACTIVE)?\s*:\s*(\d+)/i);
+  // Parse individual scores (7 criteria)
+  const decouverteMatch = text.match(/SCORE\s*D[ÉE]COUVERTE\s*(?:&|ET)\s*[ÉE]COUTE\s*:\s*(\d+)/i);
   const objectionsMatch = text.match(/SCORE\s*GESTION\s*(?:DES\s*)?OBJECTIONS?\s*:\s*(\d+)/i);
   const produitMatch = text.match(/SCORE\s*CONNAISSANCE\s*(?:DU\s*)?PRODUIT\s*:\s*(\d+)/i);
+  const valeurMatch = text.match(/SCORE\s*PROPOSITION\s*(?:DE\s*)?VALEUR\s*:\s*(\d+)/i);
   const confianceMatch = text.match(/SCORE\s*CR[ÉE]ATION\s*(?:DE\s*)?CONFIANCE\s*:\s*(\d+)/i);
-  const closingMatch = text.match(/SCORE\s*TECHNIQUE\s*(?:DE\s*)?CLOSING\s*:\s*(\d+)/i);
+  const rythmeMatch = text.match(/SCORE\s*GESTION\s*(?:DU\s*)?RYTHME\s*:\s*(\d+)/i);
+  const closingMatch = text.match(/SCORE\s*CLOSING\s*(?:&|ET)\s*R[ÉE]SILIENCE\s*:\s*(\d+)/i);
   const totalMatch = text.match(/SCORE\s*TOTAL\s*:\s*(\d+)/i);
 
   // Parse feedback sections
@@ -18,21 +20,23 @@ export function parseScoring(fullTranscript: string): ScoringResult | null {
   const conseilMatch = text.match(/CONSEIL\s*PRINCIPAL\s*:(.*?)$/is);
 
   const scores = [
-    ecouteMatch ? parseInt(ecouteMatch[1]) : null,
+    decouverteMatch ? parseInt(decouverteMatch[1]) : null,
     objectionsMatch ? parseInt(objectionsMatch[1]) : null,
     produitMatch ? parseInt(produitMatch[1]) : null,
+    valeurMatch ? parseInt(valeurMatch[1]) : null,
     confianceMatch ? parseInt(confianceMatch[1]) : null,
+    rythmeMatch ? parseInt(rythmeMatch[1]) : null,
     closingMatch ? parseInt(closingMatch[1]) : null,
   ];
 
-  // Need at least 3 scores to consider valid
+  // Need at least 4 scores to consider valid (out of 7)
   const validScores = scores.filter((s) => s !== null);
-  if (validScores.length < 3) return null;
+  if (validScores.length < 4) return null;
 
   const details = SCORE_LABELS.map((label, i) => ({
     label: label.label,
     value: scores[i] ?? 0,
-    max: 20,
+    max: label.max,
     color: label.color,
   }));
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Profile, TranscriptEntry } from '@/types';
+import Avatar from './Avatar';
 
 interface CallScreenProps {
   profile: Profile;
@@ -45,25 +46,26 @@ export default function CallScreen({
   const isCritical = timeLeft <= 60;
 
   const statusLabel = isSpeaking
-    ? 'Propriétaire parle...'
+    ? 'Propri\u00e9taire parle...'
     : userSpeaking
       ? 'Tu parles...'
-      : 'À ton tour...';
+      : '\u00c0 ton tour...';
 
   return (
     <div className="min-h-screen flex flex-col relative">
       {/* Connecting overlay */}
       {connecting && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-bg/80 backdrop-blur-sm">
-          <div className="w-12 h-12 border-2 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
-          <p className="text-gold font-display text-lg">Connexion avec {profile.name}...</p>
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-bg/90 backdrop-blur-md">
+          <div className="w-14 h-14 border-2 border-gold/20 border-t-gold rounded-full animate-spin mb-5" />
+          <p className="text-gold font-medium text-lg">Connexion avec {profile.name}...</p>
+          <p className="text-text-muted text-sm mt-1">Pr&eacute;paration de l&apos;appel</p>
         </div>
       )}
 
       {/* Status bar */}
-      <div className="flex items-center justify-between px-6 py-3 bg-card border-b border-border/50">
+      <div className="glass flex items-center justify-between px-6 py-3 rounded-none border-t-0 border-x-0">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{profile.icon}</span>
+          <Avatar profileId={profile.id} size={36} />
           <div>
             <p className="text-sm font-medium text-text-primary">{profile.name}</p>
             <p className="text-xs text-text-muted">{profile.job}</p>
@@ -73,10 +75,10 @@ export default function CallScreen({
         {/* Timer */}
         <div
           className={`
-            tabular-nums text-2xl font-semibold px-4 py-1.5 rounded-lg
-            ${isCritical ? 'text-red-400 animate-pulse-critical bg-red-400/10' : ''}
-            ${isWarning && !isCritical ? 'text-orange-400 bg-orange-400/10' : ''}
-            ${!isWarning && !isCritical ? 'text-text-primary bg-surface' : ''}
+            tabular-nums text-2xl font-bold px-4 py-1.5 rounded-2xl
+            ${isCritical ? 'text-red-400 animate-pulse-critical bg-red-400/10 border border-red-400/20' : ''}
+            ${isWarning && !isCritical ? 'text-orange-400 bg-orange-400/10 border border-orange-400/20' : ''}
+            ${!isWarning && !isCritical ? 'text-text-primary glass' : ''}
           `}
         >
           {formattedTime}
@@ -84,26 +86,29 @@ export default function CallScreen({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6">
-        {/* Avatar */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-5">
+        {/* Avatar with pulse */}
         <div className="relative">
           <div
             className={`
-              w-32 h-32 rounded-full bg-surface border-4 flex items-center justify-center text-5xl
+              w-28 h-28 rounded-full flex items-center justify-center
               transition-all duration-300
-              ${isSpeaking ? 'border-gold animate-pulse-gold shadow-[0_0_40px_rgba(200,169,81,0.2)]' : ''}
-              ${userSpeaking ? 'border-blue-400 animate-pulse-blue shadow-[0_0_40px_rgba(74,144,217,0.2)]' : ''}
-              ${!isSpeaking && !userSpeaking ? 'border-border' : ''}
+              ${isSpeaking ? 'animate-pulse-gold shadow-[0_0_50px_rgba(244,200,66,0.15)]' : ''}
+              ${userSpeaking ? 'animate-pulse-blue shadow-[0_0_50px_rgba(74,144,217,0.15)]' : ''}
             `}
           >
-            {profile.icon}
+            <Avatar profileId={profile.id} size={112} />
           </div>
+          {/* Status dot */}
+          <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-bg
+            ${isSpeaking ? 'bg-gold' : userSpeaking ? 'bg-blue-400' : 'bg-text-muted/30'}
+          `} />
         </div>
 
         {/* Status */}
         <p
           className={`text-sm font-medium ${
-            isSpeaking ? 'text-gold' : userSpeaking ? 'text-blue-400' : 'text-text-muted'
+            isSpeaking ? 'text-gold' : userSpeaking ? 'text-blue-400' : 'text-text-muted/60'
           }`}
         >
           {statusLabel}
@@ -112,12 +117,11 @@ export default function CallScreen({
         {/* Transcript */}
         <div
           ref={transcriptRef}
-          className="w-full max-w-2xl flex-1 max-h-[300px] overflow-y-auto bg-card border border-border
-                     rounded-xl p-4 space-y-3"
+          className="w-full max-w-2xl flex-1 max-h-[300px] overflow-y-auto glass rounded-3xl p-5 space-y-3"
         >
           {transcript.length === 0 && (
-            <p className="text-center text-text-muted/50 text-sm py-8">
-              La transcription apparaîtra ici...
+            <p className="text-center text-text-muted/30 text-sm py-8">
+              La transcription appara&icirc;tra ici...
             </p>
           )}
           {transcript.map((entry, i) => (
@@ -127,11 +131,11 @@ export default function CallScreen({
             >
               <div
                 className={`
-                  max-w-[80%] px-4 py-2 rounded-xl text-sm leading-relaxed
+                  max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
                   ${
                     entry.role === 'user'
-                      ? 'bg-blue-500/10 text-blue-200 border border-blue-500/20'
-                      : 'bg-gold/10 text-gold/90 border border-gold/20'
+                      ? 'bg-blue-500/10 text-blue-200/90 border border-blue-500/15'
+                      : 'bg-gold/[0.08] text-gold/85 border border-gold/15'
                   }
                 `}
               >
@@ -144,10 +148,11 @@ export default function CallScreen({
         {/* Hang up */}
         <button
           onClick={onHangUp}
-          className="px-8 py-3.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full
-                     transition-colors text-sm shadow-lg shadow-red-500/20"
+          className="px-10 py-3.5 bg-red-500/90 hover:bg-red-500 text-white font-semibold rounded-full
+                     transition-all text-sm shadow-[0_0_30px_rgba(239,68,68,0.2)]
+                     hover:shadow-[0_0_40px_rgba(239,68,68,0.3)]"
         >
-          📞 Raccrocher
+          &#x1F4DE; Raccrocher
         </button>
       </div>
     </div>

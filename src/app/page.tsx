@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppScreen, Profile, Settings, ScoringResult } from '@/types';
+import { AppScreen, Profile, Settings, ScoringResult, Difficulty, SimMode, GeneratedScenario } from '@/types';
 import { DEFAULT_SETTINGS } from '@/lib/constants';
 import { getAdminSettings, getMergedProfiles } from '@/lib/adminStore';
-import { useVapi } from '@/hooks/useVapi';
+import { generateScenario } from '@/lib/scenarioGenerator';
+import { useElevenLabs } from '@/hooks/useElevenLabs';
 import WelcomeScreen from '@/components/WelcomeScreen';
 import BriefingScreen from '@/components/BriefingScreen';
 import CallScreen from '@/components/CallScreen';
@@ -21,6 +22,11 @@ export default function Home() {
   const [finalScoring, setFinalScoring] = useState<ScoringResult | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ── Simulation state ──
+  const [simMode, setSimMode] = useState<SimMode>('training');
+  const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
+  const [scenario, setScenario] = useState<GeneratedScenario | null>(null);
+
   const {
     startCall,
     stopCall,
@@ -31,11 +37,11 @@ export default function Home() {
     transcript,
     scoring,
     error,
-  } = useVapi();
+  } = useElevenLabs();
 
   // Version-based cache migration — forces clean state on new deployments
   useEffect(() => {
-    const APP_VERSION = '4.0.0-noise-resilience';
+    const APP_VERSION = '6.0.0-elevenlabs';
     try {
       const storedVersion = localStorage.getItem('app_version');
       if (storedVersion !== APP_VERSION) {
@@ -53,11 +59,10 @@ export default function Home() {
     try {
       const admin = getAdminSettings();
       setSettings({
-        vapiPublicKey: admin.vapiPublicKey || DEFAULT_SETTINGS.vapiPublicKey,
         model: admin.model || DEFAULT_SETTINGS.model,
         duration: admin.duration || DEFAULT_SETTINGS.duration,
       });
-      console.log('[ConciergElite] Settings loaded:', { model: admin.model, key: admin.vapiPublicKey?.substring(0, 8) + '...' });
+      console.log('[ConciergElite] Settings loaded:', { model: admin.model });
     } catch {}
     // Load merged profiles (defaults + admin overrides)
     setProfiles(getMergedProfiles());
@@ -66,11 +71,6 @@ export default function Home() {
   // Save settings
   const handleSaveSettings = useCallback((newSettings: Settings) => {
     setSettings(newSettings);
-    try {
-      localStorage.setItem('vapi_public_key', newSettings.vapiPublicKey);
-      localStorage.setItem('vapi_model', newSettings.model);
-      localStorage.setItem('call_duration', String(newSettings.duration));
-    } catch {}
   }, []);
 
   // Timer countdown
@@ -100,7 +100,7 @@ export default function Home() {
     };
   }, [callActive, connecting, settings.duration, stopCall]);
 
-  // When scoring is ready from Vapi, show results
+  // When scoring is ready, show results
   useEffect(() => {
     if (scoring && !callActive) {
       setFinalScoring(scoring);
@@ -138,10 +138,28 @@ export default function Home() {
     }
   }, [callActive, connecting, screen, scoring]);
 
-  // Profile selection
+  // ── Training mode: profile selection ──
   const handleSelectProfile = useCallback((profile: Profile) => {
     setSelectedProfile(profile);
+    setScenario(null);
     setScreen('briefing');
+  }, []);
+
+  // ── Simulation mode: generate random scenario ──
+  const handleStartSimulation = useCallback(() => {
+    const generated = generateScenario(difficulty);
+    setScenario(generated);
+    setSelectedProfile(generated.profile);
+    setScreen('briefing');
+  }, [difficulty]);
+
+  // ── Mode & difficulty handlers ──
+  const handleModeChange = useCallback((mode: SimMode) => {
+    setSimMode(mode);
+  }, []);
+
+  const handleDifficultyChange = useCallback((diff: Difficulty) => {
+    setDifficulty(diff);
   }, []);
 
   // Start call
@@ -160,21 +178,29 @@ export default function Home() {
   // Navigation
   const handleBack = useCallback(() => {
     setSelectedProfile(null);
+    setScenario(null);
     setScreen('welcome');
   }, []);
 
   const handleNewRoleplay = useCallback(() => {
     setSelectedProfile(null);
     setFinalScoring(null);
+    setScenario(null);
     setScreen('welcome');
   }, []);
 
   const handleRetryProfile = useCallback(() => {
     setFinalScoring(null);
+    // In simulation mode, generate a fresh scenario
+    if (simMode === 'simulation') {
+      const generated = generateScenario(difficulty);
+      setScenario(generated);
+      setSelectedProfile(generated.profile);
+    }
     setScreen('briefing');
-  }, []);
+  }, [simMode, difficulty]);
 
-  const hasApiKey = settings.vapiPublicKey.length > 0;
+  const isSimulation = simMode === 'simulation' && scenario !== null;
 
   return (
     <main className="min-h-screen bg-bg">
@@ -190,6 +216,7 @@ export default function Home() {
               onClick={() => {
                 setScreen('welcome');
                 setSelectedProfile(null);
+                setScenario(null);
               }}
               className="text-red-400/60 hover:text-red-400 text-xs"
             >
@@ -202,10 +229,14 @@ export default function Home() {
       {/* Screens */}
       {screen === 'welcome' && (
         <WelcomeScreen
-          hasApiKey={hasApiKey}
           profiles={profiles}
           onSelectProfile={handleSelectProfile}
           onOpenSettings={() => setShowSettings(true)}
+          simMode={simMode}
+          difficulty={difficulty}
+          onModeChange={handleModeChange}
+          onDifficultyChange={handleDifficultyChange}
+          onStartSimulation={handleStartSimulation}
         />
       )}
 
@@ -214,7 +245,8 @@ export default function Home() {
           profile={selectedProfile}
           onBack={handleBack}
           onStartCall={handleStartCall}
-          hasApiKey={hasApiKey}
+          isSimulation={isSimulation}
+          scenario={scenario ?? undefined}
         />
       )}
 
@@ -237,6 +269,8 @@ export default function Home() {
           scoring={finalScoring}
           onNewRoleplay={handleNewRoleplay}
           onRetryProfile={handleRetryProfile}
+          isSimulation={isSimulation}
+          scenario={scenario ?? undefined}
         />
       )}
 

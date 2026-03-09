@@ -1,23 +1,44 @@
 'use client';
 
-import { Profile } from '@/types';
+import { Profile, Difficulty, SimMode } from '@/types';
 import ProfileCard from './ProfileCard';
+import MysteryCard from './MysteryCard';
 import Link from 'next/link';
 
 interface WelcomeScreenProps {
-  hasApiKey: boolean;
   profiles: Profile[];
   onSelectProfile: (profile: Profile) => void;
   onOpenSettings: () => void;
+  // Simulation mode props
+  simMode: SimMode;
+  difficulty: Difficulty;
+  onModeChange: (mode: SimMode) => void;
+  onDifficultyChange: (diff: Difficulty) => void;
+  onStartSimulation: () => void;
 }
 
-export default function WelcomeScreen({ hasApiKey, profiles, onSelectProfile, onOpenSettings }: WelcomeScreenProps) {
+const DIFFICULTIES: { value: Difficulty; label: string; color: string }[] = [
+  { value: 'facile', label: 'Facile', color: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30' },
+  { value: 'moyen', label: 'Moyen', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30' },
+  { value: 'difficile', label: 'Difficile', color: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30' },
+  { value: 'aleatoire', label: '🎲 Aléatoire', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30' },
+];
+
+export default function WelcomeScreen({
+  profiles,
+  onSelectProfile,
+  onOpenSettings,
+  simMode,
+  difficulty,
+  onModeChange,
+  onDifficultyChange,
+  onStartSimulation,
+}: WelcomeScreenProps) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="glass sticky top-0 z-30 flex items-center justify-between px-6 py-4 rounded-none border-t-0 border-x-0">
         <div className="flex items-center gap-2">
-          {/* Logo mark */}
           <div className="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center">
             <span className="text-gold font-bold text-sm">C</span>
           </div>
@@ -49,22 +70,9 @@ export default function WelcomeScreen({ hasApiKey, profiles, onSelectProfile, on
         </div>
       </header>
 
-      {/* Warning banner */}
-      {!hasApiKey && (
-        <div className="mx-6 mt-4 px-5 py-3.5 glass-gold rounded-2xl flex items-start gap-3">
-          <span className="text-gold mt-0.5">&#x26A0;&#xFE0F;</span>
-          <div>
-            <p className="text-sm text-gold font-medium">Cl&eacute; Vapi non configur&eacute;e</p>
-            <p className="text-xs text-text-muted mt-0.5">
-              Clique sur &#x2699;&#xFE0F; pour ajouter ta cl&eacute; publique Vapi avant de lancer un appel.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
-        <div className="max-w-3xl mx-auto text-center mb-14 animate-slide-up">
+        <div className="max-w-3xl mx-auto text-center mb-10 animate-slide-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-xs text-text-muted mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-gold animate-glow" />
             Simulateur vocal IA
@@ -75,23 +83,79 @@ export default function WelcomeScreen({ hasApiKey, profiles, onSelectProfile, on
             <span className="text-gold">propri&eacute;taire IA</span>
           </h2>
           <p className="text-text-muted text-lg max-w-xl mx-auto leading-relaxed">
-            Choisis un profil, lance l&apos;appel, et perfectionne ton pitch
+            {simMode === 'training'
+              ? 'Choisis un profil, lance l\u2019appel, et perfectionne ton pitch'
+              : 'Prospect inconnu, difficult\u00E9 ajustable \u2014 comme un vrai appel'}
           </p>
         </div>
 
-        {/* Profiles grid */}
-        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5 px-4">
-          {profiles.map((profile, i) => (
-            <div key={profile.id} style={{ animationDelay: `${i * 100}ms` }} className="animate-slide-up">
-              <ProfileCard profile={profile} onSelect={onSelectProfile} />
-            </div>
-          ))}
+        {/* Mode toggle */}
+        <div className="flex items-center gap-1 p-1 glass rounded-2xl mb-8 animate-slide-up">
+          <button
+            onClick={() => onModeChange('training')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              simMode === 'training'
+                ? 'bg-white/[0.1] text-gold shadow-[0_0_12px_rgba(244,200,66,0.1)]'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            &#x1F3AF; Entra&icirc;nement
+          </button>
+          <button
+            onClick={() => onModeChange('simulation')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              simMode === 'simulation'
+                ? 'bg-white/[0.1] text-gold shadow-[0_0_12px_rgba(244,200,66,0.1)]'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            &#x1F3B2; Simulation
+          </button>
         </div>
+
+        {/* Training mode: profile grid */}
+        {simMode === 'training' && (
+          <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5 px-4">
+            {profiles.map((profile, i) => (
+              <div key={profile.id} style={{ animationDelay: `${i * 100}ms` }} className="animate-slide-up">
+                <ProfileCard profile={profile} onSelect={onSelectProfile} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Simulation mode: difficulty selector + mystery card */}
+        {simMode === 'simulation' && (
+          <div className="w-full max-w-lg animate-slide-up">
+            {/* Difficulty selector */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {DIFFICULTIES.map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => onDifficultyChange(d.value)}
+                  className={`px-4 py-2 rounded-xl text-xs font-medium border transition-all ${
+                    difficulty === d.value
+                      ? d.color + ' shadow-sm'
+                      : 'glass text-text-muted hover:text-text-primary border-transparent'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Mystery card */}
+            <MysteryCard
+              difficulty={difficulty}
+              onStart={onStartSimulation}
+            />
+          </div>
+        )}
       </div>
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-text-muted/40">
-        ConciergElite Maroc &middot; Roleplay Trainer &middot; v2.0
+        ConciergElite Maroc &middot; Roleplay Trainer &middot; v6.0
       </footer>
     </div>
   );
