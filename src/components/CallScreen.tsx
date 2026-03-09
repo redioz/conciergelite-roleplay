@@ -10,6 +10,7 @@ interface CallScreenProps {
   maxDuration: number;
   isSpeaking: boolean;
   userSpeaking: boolean;
+  inputVolume: number;
   transcript: TranscriptEntry[];
   connecting: boolean;
   onHangUp: () => void;
@@ -21,6 +22,7 @@ export default function CallScreen({
   maxDuration,
   isSpeaking,
   userSpeaking,
+  inputVolume,
   transcript,
   connecting,
   onHangUp,
@@ -45,9 +47,12 @@ export default function CallScreen({
   const isWarning = timeLeft <= 180 && timeLeft > 60;
   const isCritical = timeLeft <= 60;
 
+  // Derive "user is actively speaking" from real-time mic volume
+  const micActive = inputVolume > 0.05;
+
   const statusLabel = isSpeaking
     ? 'Propri\u00e9taire parle...'
-    : userSpeaking
+    : micActive || userSpeaking
       ? 'Tu parles...'
       : '\u00c0 ton tour...';
 
@@ -94,21 +99,21 @@ export default function CallScreen({
               w-28 h-28 rounded-full flex items-center justify-center
               transition-all duration-300
               ${isSpeaking ? 'animate-pulse-gold shadow-[0_0_50px_rgba(244,200,66,0.15)]' : ''}
-              ${userSpeaking ? 'animate-pulse-blue shadow-[0_0_50px_rgba(74,144,217,0.15)]' : ''}
+              ${micActive || userSpeaking ? 'animate-pulse-blue shadow-[0_0_50px_rgba(74,144,217,0.15)]' : ''}
             `}
           >
             <Avatar profileId={profile.id} size={112} />
           </div>
           {/* Status dot */}
-          <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-bg
-            ${isSpeaking ? 'bg-gold' : userSpeaking ? 'bg-blue-400' : 'bg-text-muted/30'}
+          <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-bg transition-colors duration-150
+            ${isSpeaking ? 'bg-gold' : micActive || userSpeaking ? 'bg-emerald-400' : 'bg-text-muted/30'}
           `} />
         </div>
 
         {/* Status */}
         <p
-          className={`text-sm font-medium ${
-            isSpeaking ? 'text-gold' : userSpeaking ? 'text-blue-400' : 'text-text-muted/60'
+          className={`text-sm font-medium transition-colors duration-150 ${
+            isSpeaking ? 'text-gold' : micActive || userSpeaking ? 'text-emerald-400' : 'text-text-muted/60'
           }`}
         >
           {statusLabel}
@@ -143,6 +148,65 @@ export default function CallScreen({
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Mic indicator */}
+        <div className="flex items-center gap-3">
+          <div
+            className={`
+              relative w-12 h-12 rounded-full flex items-center justify-center
+              transition-all duration-150
+              ${micActive
+                ? 'bg-emerald-400/15 border border-emerald-400/40 shadow-[0_0_20px_rgba(52,211,153,0.25)]'
+                : 'bg-white/[0.04] border border-white/10'}
+            `}
+          >
+            {/* Pulsing ring when speaking */}
+            {micActive && (
+              <div className="absolute inset-0 rounded-full border-2 border-emerald-400/50 animate-ping" />
+            )}
+            {/* Mic SVG */}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              className={`transition-colors duration-150 ${micActive ? 'text-emerald-400' : 'text-text-muted/40'}`}
+            >
+              <path
+                d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"
+                fill="currentColor"
+              />
+              <path
+                d="M19 10v2a7 7 0 0 1-14 0v-2"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M12 19v4m-4 0h8"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+
+          {/* Volume bars */}
+          <div className="flex items-end gap-0.5 h-6">
+            {[0.08, 0.15, 0.25, 0.4, 0.6].map((threshold, i) => (
+              <div
+                key={i}
+                className={`
+                  w-1 rounded-full transition-all duration-75
+                  ${inputVolume > threshold
+                    ? 'bg-emerald-400'
+                    : 'bg-white/10'}
+                `}
+                style={{ height: `${8 + i * 4}px` }}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Hang up */}

@@ -11,6 +11,7 @@ interface UseElevenLabsReturn {
   callActive: boolean;
   isSpeaking: boolean;
   userSpeaking: boolean;
+  inputVolume: number;   // 0-1 real-time microphone volume level
   transcript: TranscriptEntry[];
   scoring: ScoringResult | null;
   error: string | null;
@@ -29,14 +30,20 @@ export function useElevenLabs(): UseElevenLabsReturn {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [scoring, setScoring] = useState<ScoringResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [inputVolume, setInputVolume] = useState(0);
   const fullTranscriptRef = useRef('');
   const callProfileRef = useRef<{ id: string; name: string } | null>(null);
   const callModelRef = useRef<string>('');
   const callStartTimeRef = useRef<string>('');
+  const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
+      if (volumeIntervalRef.current) {
+        clearInterval(volumeIntervalRef.current);
+        volumeIntervalRef.current = null;
+      }
       if (conversationRef.current) {
         try { conversationRef.current.endSession(); } catch {}
         conversationRef.current = null;
@@ -97,9 +104,15 @@ export function useElevenLabs(): UseElevenLabsReturn {
         },
         onDisconnect: (details: any) => {
           console.log('[ElevenLabs] Disconnected — reason:', details?.reason, 'message:', details?.message, 'full:', JSON.stringify(details));
+          // Stop volume polling
+          if (volumeIntervalRef.current) {
+            clearInterval(volumeIntervalRef.current);
+            volumeIntervalRef.current = null;
+          }
           setCallActive(false);
           setIsSpeaking(false);
           setUserSpeaking(false);
+          setInputVolume(0);
 
           // Parse scoring from full transcript
           const result = parseScoring(fullTranscriptRef.current);
@@ -167,6 +180,18 @@ export function useElevenLabs(): UseElevenLabsReturn {
       });
 
       conversationRef.current = conversation;
+
+      // Poll microphone input volume at ~20fps for real-time visual feedback
+      volumeIntervalRef.current = setInterval(() => {
+        if (conversationRef.current) {
+          try {
+            const vol = conversationRef.current.getInputVolume();
+            setInputVolume(typeof vol === 'number' ? vol : 0);
+          } catch {
+            // Ignore — session may have ended
+          }
+        }
+      }, 50);
     } catch (err: any) {
       console.error('Start call error:', err);
       let msg = err?.message || 'Impossible de démarrer l\'appel';
@@ -197,6 +222,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
     callActive,
     isSpeaking,
     userSpeaking,
+    inputVolume,
     transcript,
     scoring,
     error,

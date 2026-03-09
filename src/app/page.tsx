@@ -34,6 +34,7 @@ export default function Home() {
     callActive,
     isSpeaking,
     userSpeaking,
+    inputVolume,
     transcript,
     scoring,
     error,
@@ -257,6 +258,7 @@ export default function Home() {
           maxDuration={settings.duration}
           isSpeaking={isSpeaking}
           userSpeaking={userSpeaking}
+          inputVolume={inputVolume}
           transcript={transcript}
           connecting={connecting}
           onHangUp={handleHangUp}
