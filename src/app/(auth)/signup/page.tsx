@@ -59,7 +59,7 @@ export default function SignupPage() {
       <div className="space-y-3">
         <input
           type="text"
-          placeholder="Pr&eacute;nom / Nom"
+          placeholder="Prénom / Nom"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-all"
@@ -88,7 +88,7 @@ export default function SignupPage() {
         disabled={loading}
         className="w-full py-3 bg-gold text-bg font-semibold rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? 'Cr&eacute;ation...' : 'Cr&eacute;er mon compte'}
+        {loading ? 'Création...' : 'Créer mon compte'}
       </button>
 
       <p className="text-center text-sm text-text-muted">
