@@ -16,38 +16,9 @@ interface UseElevenLabsReturn {
   error: string | null;
 }
 
-// French language enforcement prefix — injected before every system prompt
-const FRENCH_PREFIX = `[LANGUE OBLIGATOIRE]
-Tu DOIS parler UNIQUEMENT en français. Jamais un seul mot en anglais.
-- Dis "pour cent" et JAMAIS "percent"
-- Dis "cinq cents dirhams" et JAMAIS "5 0 0 dirhams" — prononce TOUJOURS les nombres en toutes lettres de manière naturelle
-- Dis "mille" pas "one thousand", "deux mille" pas "two thousand"
-- Utilise les expressions françaises/marocaines naturelles
-- Si tu dois mentionner un terme technique anglais (Airbnb, check-in), prononce-le naturellement mais tout le reste DOIT être en français
-
-[PRONONCIATION DES NOMBRES]
-- 500 → "cinq cents"
-- 5 500 → "cinq mille cinq cents"
-- 10 000 → "dix mille"
-- 15 000 → "quinze mille"
-- 18% → "dix-huit pour cent"
-- 3% → "trois pour cent"
-Ne JAMAIS épeler les chiffres un par un. Toujours les prononcer comme un nombre naturel.
-
-[COMPRÉHENSION INTELLIGENTE]
-La transcription vocale peut être imparfaite. Tu DOIS interpréter ce que dit ton interlocuteur en utilisant le CONTEXTE de la conversation, même si certains mots sont mal transcrits.
-Exemples de corrections à faire mentalement :
-- "prix la" ou "price lab" → PriceLabs (outil de tarification)
-- "air bee tics" ou "air beatix" → Airbtics (outil d'analyse)
-- "concierge élite" ou "conciergerie lite" → ConciergÉlite
-- "courte durée" même si transcrit "court duré" ou "courte durer"
-- "check-in" même si transcrit "chekin" ou "check wine"
-- "longue durée" même si transcrit "long duré"
-- "taux d'occupation" même si transcrit "tôt d'occupation" ou "taux doccupation"
-- "rendement" même si transcrit "rendeman" ou "rendemment"
-Ne JAMAIS demander de répéter sauf si tu ne comprends vraiment pas du tout le sens. Déduis le sens par le contexte.
-
-`;
+// Language instructions are now baked into the ElevenLabs agent base prompt
+// (temperature, keywords, latency, eagerness all configured server-side)
+// Only the profile-specific system prompt is sent as override per call.
 
 export function useElevenLabs(): UseElevenLabsReturn {
   const conversationRef = useRef<any>(null);
@@ -103,19 +74,17 @@ export function useElevenLabs(): UseElevenLabsReturn {
       callModelRef.current = settings.model;
       callStartTimeRef.current = new Date().toISOString();
 
-      // Build system prompt with French enforcement
-      const systemPrompt = FRENCH_PREFIX + profile.systemPrompt;
-
       // Start the ElevenLabs conversation
+      // Language instructions & ASR keywords are in the agent base config (server-side)
+      // We only override the profile-specific prompt, firstMessage, and voiceId
       const conversation = await Conversation.startSession({
         signedUrl,
         overrides: {
           agent: {
             prompt: {
-              prompt: systemPrompt,
+              prompt: profile.systemPrompt,
             },
             firstMessage: profile.firstMessage,
-            language: 'fr',
           },
           tts: {
             voiceId: profile.voiceId,
