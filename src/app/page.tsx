@@ -35,6 +35,7 @@ export default function Home() {
     isSpeaking,
     userSpeaking,
     inputVolume,
+    evaluating,
     transcript,
     scoring,
     error,
@@ -109,13 +110,12 @@ export default function Home() {
     }
   }, [scoring, callActive]);
 
-  // When call ends without scoring (user hung up early or no scoring detected)
+  // When call ends without scoring — wait for AI evaluation or show fallback
   useEffect(() => {
-    if (!callActive && !connecting && screen === 'call' && !scoring) {
-      // Wait a moment for any final transcript processing
+    if (!callActive && !connecting && screen === 'call' && !scoring && !evaluating) {
+      // Evaluation finished but no scoring = truly no data (transcript too short)
       const timeout = setTimeout(() => {
         if (!scoring) {
-          // Generate a fallback "no scoring" result
           setFinalScoring({
             total: 0,
             details: [
@@ -127,17 +127,17 @@ export default function Home() {
               { label: 'Gestion du Rythme', value: 0, max: 10, color: '#FF9800' },
               { label: 'Closing & Résilience', value: 0, max: 15, color: '#9B59B6' },
             ],
-            pointsForts: "L'appel s'est terminé avant que l'évaluation ne soit donnée.",
-            axesAmelioration: "Essaie de maintenir l'appel plus longtemps pour obtenir une évaluation complète.",
-            conseilPrincipal: "Relance le roleplay et laisse l'IA terminer son évaluation avant de raccrocher.",
+            pointsForts: "L'appel était trop court pour être évalué.",
+            axesAmelioration: "Essaie de maintenir l'appel plus longtemps pour avoir assez de matière à évaluer.",
+            conseilPrincipal: "Relance le roleplay et tiens au moins 1-2 minutes de conversation.",
           });
           setScreen('results');
         }
-      }, 3000);
+      }, 2000);
 
       return () => clearTimeout(timeout);
     }
-  }, [callActive, connecting, screen, scoring]);
+  }, [callActive, connecting, screen, scoring, evaluating]);
 
   // ── Training mode: profile selection ──
   const handleSelectProfile = useCallback((profile: Profile) => {
@@ -263,6 +263,17 @@ export default function Home() {
           connecting={connecting}
           onHangUp={handleHangUp}
         />
+      )}
+
+      {/* Evaluating overlay — shown after call ends while AI scores the transcript */}
+      {screen === 'call' && !callActive && evaluating && (
+        <div className="fixed inset-0 z-40 bg-bg flex flex-col items-center justify-center gap-6 animate-slide-up">
+          <div className="w-16 h-16 rounded-full border-4 border-gold/20 border-t-gold animate-spin" />
+          <div className="text-center">
+            <p className="text-lg font-semibold text-text-primary mb-2">Évaluation en cours...</p>
+            <p className="text-sm text-text-muted">L&apos;IA analyse ta performance</p>
+          </div>
+        </div>
       )}
 
       {screen === 'results' && selectedProfile && finalScoring && (

@@ -12,6 +12,7 @@ interface UseElevenLabsReturn {
   isSpeaking: boolean;
   userSpeaking: boolean;
   inputVolume: number;   // 0-1 real-time microphone volume level
+  evaluating: boolean;   // true while post-call AI evaluation is running
   transcript: TranscriptEntry[];
   scoring: ScoringResult | null;
   error: string | null;
@@ -31,6 +32,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
   const [scoring, setScoring] = useState<ScoringResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputVolume, setInputVolume] = useState(0);
+  const [evaluating, setEvaluating] = useState(false);
   const fullTranscriptRef = useRef('');
   const callProfileRef = useRef<{ id: string; name: string } | null>(null);
   const callModelRef = useRef<string>('');
@@ -114,10 +116,32 @@ export function useElevenLabs(): UseElevenLabsReturn {
           setUserSpeaking(false);
           setInputVolume(0);
 
-          // Parse scoring from full transcript
+          // Parse scoring from full transcript (agent may have given inline scores)
           const result = parseScoring(fullTranscriptRef.current);
           if (result) {
             setScoring(result);
+          } else if (fullTranscriptRef.current.trim().length > 50) {
+            // No inline scores — call AI evaluation endpoint
+            setEvaluating(true);
+            fetch('/api/evaluate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                transcript: fullTranscriptRef.current,
+                profileName: callProfileRef.current?.name || 'inconnu',
+              }),
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data.evaluation) {
+                  const aiResult = parseScoring(data.evaluation);
+                  if (aiResult) {
+                    setScoring(aiResult);
+                  }
+                }
+              })
+              .catch((err) => console.error('[Evaluate] Post-call evaluation failed:', err))
+              .finally(() => setEvaluating(false));
           }
 
           // Log transcript to backend
@@ -223,6 +247,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
     isSpeaking,
     userSpeaking,
     inputVolume,
+    evaluating,
     transcript,
     scoring,
     error,
