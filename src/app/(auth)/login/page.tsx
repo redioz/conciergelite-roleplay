@@ -38,6 +38,27 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleLogin} className="space-y-5">
+      {/* Tutoriel banner */}
+      <a
+        href="https://www.loom.com/share/878f07dafd1a46b980c1e86bd571436b"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 w-full px-4 py-3 bg-gold/10 border border-gold/20 rounded-xl hover:bg-gold/15 transition-all group"
+      >
+        <div className="w-8 h-8 rounded-lg bg-gold/20 flex items-center justify-center flex-shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6.5 4L12 8L6.5 12V4Z" fill="#F4C842"/>
+          </svg>
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-medium text-gold">Tutoriel</p>
+          <p className="text-[11px] text-text-muted">Comment utiliser le simulateur</p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-gold/50 group-hover:text-gold transition-colors flex-shrink-0">
+          <path d="M5 2L10 7L5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </a>
+
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-text-primary">Connexion</h2>
         <p className="text-sm text-text-muted mt-1">Acc&egrave;de au simulateur roleplay</p>
