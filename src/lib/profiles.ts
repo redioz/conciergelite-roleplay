@@ -13,7 +13,7 @@ export const PROFILES: Profile[] = [
     personality:
       'Prudent, conservateur financièrement, aime la stabilité. Poli mais sceptique, il pose des questions directes et n\'aime pas prendre de risques avec son patrimoine.',
     firstMessage: 'Allô, oui bonjour ?',
-    voiceId: 'VqRZ6BFefek5cPzVm5MN', // Vincent — voix française native, mature
+    voiceId: 'a5n9pJUnAhX4fn7lx3uo', // Martin Dupont Intime — voix française native, mature, confiante
     tags: ['Longue → Courte durée', 'Sécurité', 'Revenus'],
     systemPrompt: `Tu es Hicham, un propriétaire marocain de 48 ans, cadre dans une banque à Marrakech. Tu possèdes un appartement de 2 chambres à Guéliz que tu loues en longue durée à 5 500 MAD/mois depuis 3 ans.
 

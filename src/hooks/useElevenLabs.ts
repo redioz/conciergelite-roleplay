@@ -82,7 +82,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
 
     try {
       // Dynamic import to avoid SSR issues
-      const { Conversation } = await import('@11labs/client');
+      const { Conversation } = await import('@elevenlabs/client');
 
       // Get the agent ID
       const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
@@ -126,8 +126,8 @@ export function useElevenLabs(): UseElevenLabsReturn {
           setConnecting(false);
           setCallActive(true);
         },
-        onDisconnect: () => {
-          console.log('[ElevenLabs] Disconnected');
+        onDisconnect: (details: any) => {
+          console.log('[ElevenLabs] Disconnected — reason:', details?.reason, 'message:', details?.message, 'full:', JSON.stringify(details));
           setCallActive(false);
           setIsSpeaking(false);
           setUserSpeaking(false);
@@ -189,10 +189,9 @@ export function useElevenLabs(): UseElevenLabsReturn {
             setIsSpeaking(false);
           }
         },
-        onError: (err: any) => {
-          console.error('[ElevenLabs] Error:', err);
-          const msg = typeof err === 'string' ? err : err?.message || 'Erreur ElevenLabs inconnue';
-          setError(msg);
+        onError: (message: string, context?: any) => {
+          console.error('[ElevenLabs] Error:', message, 'context:', context);
+          setError(message || 'Erreur ElevenLabs inconnue');
           setConnecting(false);
           setCallActive(false);
         },
