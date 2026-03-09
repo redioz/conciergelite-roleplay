@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { ScoringResult } from '@/types';
 
 interface Session {
   id: string;
   profile_name: string;
   score_total: number | null;
+  score_details: ScoringResult | null;
   duration_seconds: number | null;
   started_at: string;
   model: string | null;
@@ -25,6 +27,7 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -32,10 +35,10 @@ export default function DashboardPage() {
     const fetchData = async () => {
       const supabase = createClient();
 
-      // Fetch sessions
+      // Fetch sessions with score_details
       const { data: sessionsData } = await supabase
         .from('roleplay_sessions')
-        .select('id, profile_name, score_total, duration_seconds, started_at, model')
+        .select('id, profile_name, score_total, score_details, duration_seconds, started_at, model')
         .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(50);
@@ -72,6 +75,10 @@ export default function DashboardPage() {
   const usagePercent = usage ? Math.min(100, (usage.seconds_used / usage.limit_seconds) * 100) : 0;
   const minutesUsed = usage ? Math.floor(usage.seconds_used / 60) : 0;
   const minutesRemaining = usage ? Math.ceil(usage.seconds_remaining / 60) : 60;
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
 
   if (loading) {
     return (
@@ -172,29 +179,46 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {sessions.map((session) => (
-                <div key={session.id} className="glass rounded-xl p-4 flex items-center gap-4">
-                  {/* Score badge */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    session.score_total !== null && session.score_total >= 70
-                      ? 'bg-green-500/10 text-green-400'
-                      : session.score_total !== null && session.score_total >= 40
-                      ? 'bg-orange-500/10 text-orange-400'
-                      : 'bg-white/[0.04] text-text-muted'
-                  }`}>
-                    <span className="text-lg font-bold">
-                      {session.score_total !== null ? session.score_total : '--'}
-                    </span>
-                  </div>
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{session.profile_name}</p>
-                    <p className="text-xs text-text-muted">{formatDate(session.started_at)}</p>
-                  </div>
-                  {/* Duration */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-medium text-text-primary">{formatDuration(session.duration_seconds)}</p>
-                    <p className="text-[10px] text-text-muted uppercase tracking-wide">dur&eacute;e</p>
-                  </div>
+                <div key={session.id} className="glass rounded-xl overflow-hidden">
+                  {/* Session header — always visible */}
+                  <button
+                    onClick={() => toggleExpand(session.id)}
+                    className="w-full p-4 flex items-center gap-4 text-left hover:bg-white/[0.02] transition-colors"
+                  >
+                    {/* Score badge */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      session.score_total !== null && session.score_total >= 70
+                        ? 'bg-green-500/10 text-green-400'
+                        : session.score_total !== null && session.score_total >= 40
+                        ? 'bg-orange-500/10 text-orange-400'
+                        : 'bg-white/[0.04] text-text-muted'
+                    }`}>
+                      <span className="text-lg font-bold">
+                        {session.score_total !== null ? session.score_total : '--'}
+                      </span>
+                    </div>
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">{session.profile_name}</p>
+                      <p className="text-xs text-text-muted">{formatDate(session.started_at)}</p>
+                    </div>
+                    {/* Duration */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-medium text-text-primary">{formatDuration(session.duration_seconds)}</p>
+                      <p className="text-[10px] text-text-muted uppercase tracking-wide">dur&eacute;e</p>
+                    </div>
+                    {/* Expand chevron */}
+                    <div className={`text-text-muted/40 transition-transform duration-200 ${expandedId === session.id ? 'rotate-180' : ''}`}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </button>
+
+                  {/* Expanded details */}
+                  {expandedId === session.id && (
+                    <SessionDetails scoring={session.score_details} />
+                  )}
                 </div>
               ))}
             </div>
@@ -208,6 +232,70 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Expanded session details with score breakdown */
+function SessionDetails({ scoring }: { scoring: ScoringResult | null }) {
+  if (!scoring || !scoring.details || scoring.details.length === 0) {
+    return (
+      <div className="px-4 pb-4 border-t border-white/[0.04]">
+        <p className="text-xs text-text-muted py-3">Pas de d&eacute;tails disponibles pour cette session.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pb-5 border-t border-white/[0.04] space-y-4 animate-slide-up">
+      {/* Score total */}
+      <div className="pt-4 flex items-center gap-3">
+        <span className="text-2xl font-bold text-gold">{scoring.total}</span>
+        <span className="text-sm text-text-muted">/100</span>
+      </div>
+
+      {/* Criteria bars */}
+      <div className="space-y-2.5">
+        {scoring.details.map((detail, i) => (
+          <div key={i}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs text-text-muted">{detail.label}</span>
+              <span className="text-xs font-medium text-text-primary">{detail.value}/{detail.max}</span>
+            </div>
+            <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${detail.max > 0 ? (detail.value / detail.max) * 100 : 0}%`,
+                  backgroundColor: detail.color,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Feedback sections */}
+      {scoring.pointsForts && (
+        <div className="bg-green-500/5 border border-green-500/10 rounded-xl p-3">
+          <p className="text-[10px] uppercase tracking-wider text-green-400 font-semibold mb-1.5">Points forts</p>
+          <p className="text-xs text-text-primary/80 leading-relaxed whitespace-pre-line">{scoring.pointsForts}</p>
+        </div>
+      )}
+
+      {scoring.axesAmelioration && (
+        <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl p-3">
+          <p className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold mb-1.5">Axes d&apos;am&eacute;lioration</p>
+          <p className="text-xs text-text-primary/80 leading-relaxed whitespace-pre-line">{scoring.axesAmelioration}</p>
+        </div>
+      )}
+
+      {scoring.conseilPrincipal && (
+        <div className="bg-gold/5 border border-gold/10 rounded-xl p-3">
+          <p className="text-[10px] uppercase tracking-wider text-gold font-semibold mb-1.5">Conseil principal</p>
+          <p className="text-xs text-text-primary/80 leading-relaxed whitespace-pre-line">{scoring.conseilPrincipal}</p>
+        </div>
+      )}
     </div>
   );
 }

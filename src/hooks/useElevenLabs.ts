@@ -118,10 +118,37 @@ export function useElevenLabs(): UseElevenLabsReturn {
           setUserSpeaking(false);
           setInputVolume(0);
 
+          // Helper: save transcript + scoring to backend
+          const durationMs = Date.now() - new Date(callStartTimeRef.current).getTime();
+          const saveTranscript = (finalScoring: ScoringResult | null) => {
+            setTranscript((currentTranscript) => {
+              fetch('/api/transcript', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  profile_id: callProfileRef.current?.id || 'unknown',
+                  profile_name: callProfileRef.current?.name || 'unknown',
+                  transcript: currentTranscript,
+                  full_transcript: fullTranscriptRef.current,
+                  scoring: finalScoring,
+                  duration_seconds: Math.round(durationMs / 1000),
+                  model: callModelRef.current,
+                  started_at: callStartTimeRef.current,
+                  user_id: callUserIdRef.current || null,
+                }),
+              })
+                .then((r) => r.json())
+                .then((data) => console.log('[ConciergElite] Transcript saved:', data))
+                .catch((err) => console.error('[ConciergElite] Failed to save transcript:', err));
+              return currentTranscript;
+            });
+          };
+
           // Parse scoring from full transcript (agent may have given inline scores)
           const result = parseScoring(fullTranscriptRef.current);
           if (result) {
             setScoring(result);
+            saveTranscript(result);
           } else if (fullTranscriptRef.current.trim().length > 50) {
             // No inline scores — call AI evaluation endpoint
             setEvaluating(true);
@@ -139,36 +166,22 @@ export function useElevenLabs(): UseElevenLabsReturn {
                   const aiResult = parseScoring(data.evaluation);
                   if (aiResult) {
                     setScoring(aiResult);
+                    saveTranscript(aiResult);
+                    return;
                   }
                 }
+                // No valid scoring from AI — save without scoring
+                saveTranscript(null);
               })
-              .catch((err) => console.error('[Evaluate] Post-call evaluation failed:', err))
+              .catch((err) => {
+                console.error('[Evaluate] Post-call evaluation failed:', err);
+                saveTranscript(null);
+              })
               .finally(() => setEvaluating(false));
+          } else {
+            // Transcript too short — save without scoring
+            saveTranscript(null);
           }
-
-          // Log transcript to backend
-          const durationMs = Date.now() - new Date(callStartTimeRef.current).getTime();
-          setTranscript((currentTranscript) => {
-            fetch('/api/transcript', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                profile_id: callProfileRef.current?.id || 'unknown',
-                profile_name: callProfileRef.current?.name || 'unknown',
-                transcript: currentTranscript,
-                full_transcript: fullTranscriptRef.current,
-                scoring: result || null,
-                duration_seconds: Math.round(durationMs / 1000),
-                model: callModelRef.current,
-                started_at: callStartTimeRef.current,
-                user_id: callUserIdRef.current || null,
-              }),
-            })
-              .then((r) => r.json())
-              .then((data) => console.log('[ConciergElite] Transcript saved:', data))
-              .catch((err) => console.error('[ConciergElite] Failed to save transcript:', err));
-            return currentTranscript;
-          });
         },
         onMessage: (message: { message: string; source: string }) => {
           const role = message.source === 'ai' ? 'assistant' : 'user';
