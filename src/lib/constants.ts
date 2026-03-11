@@ -27,7 +27,7 @@ export const VERDICTS = [
 
 export const DEFAULT_SETTINGS = {
   model: 'claude-sonnet-4-20250514' as const,
-  duration: 900, // 15 minutes
+  duration: 600, // 10 minutes
 };
 
 export const DURATION_OPTIONS = [
